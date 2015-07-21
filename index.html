@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html ng-app="hottextApp">
+<head>
+	<title>HottextApp</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootswatch/3.3.0/journal/bootstrap.min.css" />
+  <script type="text/javascript" src="http://jds.jadoos.com/hottextapp.lukasrosenstock.net/WebApp/"></script>
+  <style type="text/css">
+    .adn-avatar {
+      width:30px;
+      height:30px;
+    }
+    article {
+      margin:25px;
+    }
+    .htxtapp-temp {
+      color:#ff9900;
+    }
+		#app-content {
+			display:none;
+		}
+  </style>
+</head>
+<body>
+	<div class="container">
+    <h1>HottextApp <small>top updates from your network</small></h1>
+    <div class="col-md8" id="app-content" ng-controller="HottextPostsController">
+			<p ng-show="status == 0"><button ng-click="signin()">Sign in with App.net</button></p>
+			<p ng-show="status == 1">Handling authentication ...</p>
+			<p ng-show="status == 2">Collecting top posts from your network ...</p>
+      <article ng-repeat="p in posts">
+        <p><img ng-src="{{p.avatar_url}}" class="adn-avatar img-circle"/> <a href="{{p.user_url}}">{{p.fullname}} (@{{p.username}})</a>:</p>
+		    <p>{{p.text}}</p>
+	      <p class="text-right"><span class="htxtapp-temp"><span class="glyphicon glyphicon-fire"></span> {{p.temp}}</span> &#183; <span ng-show="p.stars > 0">{{p.stars}} <span class="glyphicon glyphicon-star"></span> &#183; </span>
+          <span ng-show="p.reposts > 0">{{p.reposts}} <span class="glyphicon glyphicon-retweet"></span> &#183; </span><span ng-show="p.replies > 0">{{p.replies}} <span class="glyphicon glyphicon-comment"></span> &#183; </span>
+          <time datetime="{{p.datetime}}">{{p.datetime_formatted}}</time> &#183; <a href="{{p.post_url}}">View post</a></p>
+      </article>
+			<p ng-show="status == 3"><button ng-click="signout()">Sign out</button></p>
+			<p><small>an <a href="http://app.net/">app.net</a> experiment by <a href="http://lukasrosenstock.net/">Lukas Rosenstock</a></small></p>
+    </div>
+  </div>
+  <script type="text/javascript">
+		function fetchPosts(agw, $scope) {
+			agw.ajax({
+				url : '/ws/topPosts',
+				success : function(data) {
+					$scope.posts = data.posts;
+					$scope.status = 3;
+					$scope.$apply();
+				}
+			});
+		}
+
+		document.addEventListener('jdsLoadedAll', function() {
+			var hottextApp = angular.module('hottextApp', []);
+
+			hottextApp.controller('HottextPostsController', function ($scope) {
+
+				$scope.signin = function() {
+					$scope.status = 1;
+					JadoosPlatform.signinWithAuthPopup('jkri://appdotnet.jadoos.com', [], function(result) {
+						if (result==JadoosSDK.FlowCompleteResult.Success) {
+							var agw = new jQueryAccountGateway(JadoosPlatform.getAAUID(),
+								JadoosPlatform.getAccessToken());
+							$scope.status = 2;
+							$scope.$apply();
+							fetchPosts(agw, $scope);
+						} else {
+							alert("Error during sign-in!");
+						}
+					});
+				}
+
+				$scope.signout = function() {
+					JadoosPlatform.signout();
+					$scope.status = 0;
+					$scope.posts = [];
+				}
+
+				if (JadoosPlatform.isSignedIn()) {
+					// Logged in
+					$scope.status = 2;
+					var agw = new jQueryAccountGateway(JadoosPlatform.getAAUID(), JadoosPlatform.getAccessToken());
+					fetchPosts(agw, $scope);
+				} else {
+					// Not logged in
+					$scope.status = 0;
+				}
+
+				setTimeout(function() {
+					$('#app-content').show();
+				}, 500);
+			});
+		});
+  </script>
+</body>
+</html>
